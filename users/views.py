@@ -7,6 +7,8 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
+from UserProfile.models import UserProfile
+
 
 @api_view(['POST'])
 def login(request):
@@ -24,21 +26,21 @@ def login(request):
 
 @api_view(['POST'])
 def register(request):
-
-    serializer = UserSerializer(data = request.data)
+    serializer = UserSerializer(data=request.data)
 
     if serializer.is_valid():
-        serializer.save()
-
-        user = User.objects.get(username = serializer.data['username'])
-        user.set_password(serializer.data['password'])
-
+        user = serializer.save()
+        user.set_password(serializer.validated_data['password'])  
         user.save()
 
-        token = Token.objects.create(user = user)
+        # Verifica si el UserProfile ya existe
+        UserProfile.objects.get_or_create(user=user)  # Esto creará el UserProfile si no existe
+
+        token = Token.objects.create(user=user)
         return Response({'token': token.key, "user": serializer.data}, status=status.HTTP_201_CREATED)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
